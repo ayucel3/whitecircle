@@ -6,13 +6,9 @@ node_modules
 .env
 .env.*
 !.env.example
-pnpm-lock.yaml
 ai-sdk
-pii-service/node_modules
-frontend/node_modules
-frontend/.next
+pii-service
 frontend/dev.db
-frontend/prisma/migrations
 *.sqlite
 *.db
 .vscode
