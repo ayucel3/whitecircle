@@ -96,7 +96,7 @@ fastify.post('/detect-pii', async (request, reply) => {
 
 const start = async () => {
   try {
-    const port = process.env.PII_SERVICE_PORT ? parseInt(process.env.PII_SERVICE_PORT) : 3001;
+    const port = process.env.PII_SERVICE_PORT ? parseInt(process.env.PII_SERVICE_PORT) : 3002;
     await fastify.listen({ port, host: '0.0.0.0' });
     console.log(`PII service listening on port ${port}`);
   } catch (err) {

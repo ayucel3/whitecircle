@@ -2,6 +2,9 @@ import { notFound } from 'next/navigation';
 import { getConversationById, convertToUIMessages, getAllConversations } from '@/lib/db';
 import { ChatLayout } from '@/components/chat-layout';
 
+// Force dynamic rendering - don't try to generate this page statically at build time
+export const dynamic = 'force-dynamic';
+
 interface ChatPageProps {
   params: Promise<{ id: string }>;
 }
