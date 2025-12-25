@@ -1,0 +1,20 @@
+{
+  "name": "whitecircle",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently -n \"frontend,pii-service\" -c \"cyan,magenta\" \"pnpm --filter frontend dev\" \"pnpm --filter pii-service dev\"",
+    "build": "pnpm --filter frontend build && pnpm --filter pii-service build",
+    "start": "concurrently -n \"frontend,pii-service\" -c \"cyan,magenta\" \"pnpm --filter frontend start\" \"pnpm --filter pii-service start\"",
+    "db:migrate": "pnpm --filter frontend prisma migrate dev",
+    "db:studio": "pnpm --filter frontend prisma studio"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@8.15.0+sha512.ea45517d5285d123eac02c3793505fa1fd6da90a2fc60d1e8d9e0c1e9292886ecfaff513f062b9d1cc8021bb8615033b1ac5bea3b2ee3fc165a6d7034bbe6b03",
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
