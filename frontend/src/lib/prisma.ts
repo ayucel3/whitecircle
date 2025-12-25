@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/client/client';
+import { PrismaClient } from '../../node_modules/.prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import { Pool } from 'pg';
