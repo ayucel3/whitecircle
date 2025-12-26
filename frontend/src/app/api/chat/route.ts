@@ -43,7 +43,7 @@ export async function POST(req: Request) {
                   type: 'data-pii-mask',
                   data: {
                     masks: piiMatches.map((match) => ({
-                      type: match.type,
+                      type: match.type as 'email' | 'phone' | 'name',
                       start: match.start,
                       end: match.end,
                     })),
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
                   type: 'data-pii-mask',
                   data: {
                     masks: piiMatches.map(match => ({
-                      type: match.type,
+                      type: match.type as 'email' | 'phone' | 'name',
                       start: match.start,
                       end: match.end,
                     })),
