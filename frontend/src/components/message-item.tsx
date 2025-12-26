@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { ChatUIMessage } from '@/lib/types';
 import { motion } from 'framer-motion';
@@ -17,6 +17,7 @@ interface MaskRange {
 
 export function MessageItem({ message }: MessageItemProps) {
   const [revealedMasks, setRevealedMasks] = useState<Set<string>>(new Set());
+  const [clientPiiMasks, setClientPiiMasks] = useState<MaskRange[]>([]);
 
   // Extract text content from message parts
   const textContent = useMemo(() => {
@@ -27,7 +28,7 @@ export function MessageItem({ message }: MessageItemProps) {
   }, [message.parts]);
 
   // Extract PII masks from message parts - use the latest one as it contains the most complete scan
-  const piiMasks = useMemo(() => {
+  const serverPiiMasks = useMemo(() => {
     // Search from the end to find the most recent mask data
     let masks: MaskRange[] = [];
     for (let i = message.parts.length - 1; i >= 0; i--) {
@@ -56,6 +57,51 @@ export function MessageItem({ message }: MessageItemProps) {
         return acc;
       }, [] as MaskRange[]);
   }, [message.parts]);
+
+  // Only detect PII for assistant messages (not user messages)
+  useEffect(() => {
+    if (message.role === 'assistant' && textContent && serverPiiMasks.length === 0) {
+      // Call PII detection API for assistant messages that don't have server-side masks
+      fetch('/api/detect-pii', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: textContent }),
+      })
+        .then(res => res.json())
+        .then((data: { detections?: Array<{ start: number; end: number; type: string; value: string }> }) => {
+          if (data.detections && data.detections.length > 0) {
+            setClientPiiMasks(data.detections.map((d) => ({
+              start: d.start,
+              end: d.end,
+              type: d.type as 'email' | 'phone' | 'name',
+            })));
+          }
+        })
+        .catch(err => console.error('Client-side PII detection failed:', err));
+    }
+  }, [message.role, textContent, serverPiiMasks.length]);
+
+  // Combine server and client masks
+  const piiMasks = useMemo(() => {
+    const allMasks = [...serverPiiMasks, ...clientPiiMasks];
+    if (allMasks.length === 0) return [];
+
+    // Sort and merge overlapping masks
+    return allMasks
+      .sort((a, b) => a.start - b.start)
+      .reduce((acc, current) => {
+        if (acc.length === 0) return [current];
+        const last = acc[acc.length - 1];
+        
+        if (current.start < last.end) {
+          last.end = Math.max(last.end, current.end);
+          return acc;
+        }
+        
+        acc.push(current);
+        return acc;
+      }, [] as MaskRange[]);
+  }, [serverPiiMasks, clientPiiMasks]);
 
   // Toggle mask visibility
   const toggleMask = (index: number) => {

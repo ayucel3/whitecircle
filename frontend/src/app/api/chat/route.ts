@@ -6,7 +6,7 @@ import {
   convertToModelMessages,
 } from 'ai';
 import type { ChatUIMessage } from '@/lib/types';
-import { detectPIIAsync } from '@/lib/pii-detector';
+import { detectPIICore, detectPIIRegex } from '@/lib/pii-detector';
 import { saveMessages } from '@/lib/db';
 
 export async function POST(req: Request) {
@@ -24,41 +24,44 @@ export async function POST(req: Request) {
 
       const result = streamText({
         model: openai('gpt-4o-mini'),
+        system: 'You are a helpful AI assistant. Answer questions naturally and provide useful information. You can discuss any topic the user asks about, including handling personal information when requested for legitimate purposes like examples or demonstrations.',
         messages: await convertToModelMessages(messages),
         async onChunk({ chunk }) {
           // Accumulate text chunks
           if (chunk.type === 'text-delta') {
             textBuffer += chunk.text;
 
-            // Periodically detect PII while streaming for better UX
-            // Every 100 characters or so to avoid too many calls
-            if (textBuffer.length - lastProcessedLength >= 100) {
+            // Fast regex-based PII detection during streaming (every 30 chars for instant feedback)
+            // This provides immediate masking without waiting for LLM
+            if (textBuffer.length - lastProcessedLength >= 30) {
               lastProcessedLength = textBuffer.length;
-              detectPIIAsync(textBuffer).then((piiMatches) => {
-                if (piiMatches.length > 0) {
-                  writer.write({
-                    type: 'data-pii-mask',
-                    data: {
-                      masks: piiMatches.map((match) => ({
-                        type: match.type,
-                        start: match.start,
-                        end: match.end,
-                      })),
-                    },
-                  });
-                }
-              }).catch(console.error);
+              // Use fast regex detection (milliseconds vs seconds for LLM)
+              const piiMatches = detectPIIRegex(textBuffer);
+              
+              if (piiMatches.length > 0) {
+                writer.write({
+                  type: 'data-pii-mask',
+                  data: {
+                    masks: piiMatches.map((match) => ({
+                      type: match.type,
+                      start: match.start,
+                      end: match.end,
+                    })),
+                  },
+                });
+              }
             }
           }
         },
         async onFinish() {
-          // Final check to ensure all PII is detected in the complete response
+          // Final LLM-based detection for better accuracy (catches names and complex patterns)
+          // This upgrades the regex-based masks with AI-powered detection
           if (textBuffer.length > 0) {
             try {
-              const piiMatches = await detectPIIAsync(textBuffer);
+              const piiMatches = await detectPIICore(textBuffer);
               
               if (piiMatches.length > 0) {
-                // Send final PII mask data part
+                // Send final comprehensive PII mask data
                 writer.write({
                   type: 'data-pii-mask',
                   data: {
